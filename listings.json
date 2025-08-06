@@ -1,0 +1,25 @@
+[
+  {
+    "listing": "/index.html",
+    "items": [
+      "/posts/post-with-code/index.html",
+      "/posts/welcome/index.html",
+      "/posts/2022-04-07-language_model.html",
+      "/posts/2022-03-29-nlp.html",
+      "/posts/2022-03-27-collaborative_filtering.html",
+      "/posts/2022-03-24-multilabel_classification.html",
+      "/posts/2022-03-20-image_classification_fastai.html",
+      "/posts/2022-03-17-intro_fastai.html",
+      "/posts/2022-03-15-lunar_landing_expected_sarsa.html",
+      "/posts/2021-06-04-the_beauty_of_neural_network.html",
+      "/posts/2020-08-06-function_approximation.html",
+      "/posts/2020-06-30-model_free_control.html",
+      "/posts/2020-06-29-optimal_policy_dynamic_programming.html",
+      "/posts/2020-06-22-bandits_exploration_exploitation.html",
+      "/posts/2020-06-21-model_free_prediction_control.html",
+      "/posts/2020-06-14-mdp_dp.html",
+      "/posts/2020-06-06-exploration_exploitation.html",
+      "/posts/2020-02-20-test.html"
+    ]
+  }
+]

@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.32">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2020-06-21">
+<meta name="description" content="Third in a series on understanding Reinforcement Learning.">
+
+<title>Model Free Learning Method – quarto-blog</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-60e9869d79eadd47372ed1fe3ed6e672.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">quarto-blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://twitter.com"> <i class="bi bi-twitter" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Model Free Learning Method</h1>
+                  <div>
+        <div class="description">
+          Third in a series on understanding Reinforcement Learning.
+        </div>
+      </div>
+                </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">June 21, 2020</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#monte-carlo-algorithm" id="toc-monte-carlo-algorithm" class="nav-link" data-scroll-target="#monte-carlo-algorithm">Monte Carlo Algorithm</a>
+  <ul class="collapse">
+  <li><a href="#value-function-approximation" id="toc-value-function-approximation" class="nav-link" data-scroll-target="#value-function-approximation">Value Function Approximation</a>
+  <ul class="collapse">
+  <li><a href="#linear-function-approximation" id="toc-linear-function-approximation" class="nav-link" data-scroll-target="#linear-function-approximation">Linear Function Approximation</a></li>
+  </ul></li>
+  <li><a href="#model-free-prediction" id="toc-model-free-prediction" class="nav-link" data-scroll-target="#model-free-prediction">Model-Free Prediction</a></li>
+  <li><a href="#mc-policy-evaluation" id="toc-mc-policy-evaluation" class="nav-link" data-scroll-target="#mc-policy-evaluation">MC Policy Evaluation</a></li>
+  <li><a href="#drawbacks-of-mc-learning" id="toc-drawbacks-of-mc-learning" class="nav-link" data-scroll-target="#drawbacks-of-mc-learning">Drawbacks of MC Learning</a></li>
+  </ul></li>
+  <li><a href="#temporal-difference-learning" id="toc-temporal-difference-learning" class="nav-link" data-scroll-target="#temporal-difference-learning">Temporal Difference Learning</a>
+  <ul class="collapse">
+  <li><a href="#bootstraping-and-sampling" id="toc-bootstraping-and-sampling" class="nav-link" data-scroll-target="#bootstraping-and-sampling">Bootstraping and Sampling</a></li>
+  <li><a href="#temporal-difference-learning-properties" id="toc-temporal-difference-learning-properties" class="nav-link" data-scroll-target="#temporal-difference-learning-properties">Temporal Difference Learning Properties</a></li>
+  <li><a href="#pros-and-cons-of-mc-and-td" id="toc-pros-and-cons-of-mc-and-td" class="nav-link" data-scroll-target="#pros-and-cons-of-mc-and-td">Pros and Cons of MC and TD</a>
+  <ul class="collapse">
+  <li><a href="#biasvariance-trade-off" id="toc-biasvariance-trade-off" class="nav-link" data-scroll-target="#biasvariance-trade-off">Bias/Variance trade-off</a></li>
+  </ul></li>
+  <li><a href="#batch-mode-of-mc-and-td" id="toc-batch-mode-of-mc-and-td" class="nav-link" data-scroll-target="#batch-mode-of-mc-and-td">Batch mode of MC and TD</a></li>
+  </ul></li>
+  <li><a href="#unified-view-of-reinforcement-learning" id="toc-unified-view-of-reinforcement-learning" class="nav-link" data-scroll-target="#unified-view-of-reinforcement-learning">Unified view of Reinforcement Learning</a>
+  <ul class="collapse">
+  <li><a href="#multi-step-prediction" id="toc-multi-step-prediction" class="nav-link" data-scroll-target="#multi-step-prediction">Multi-step prediction</a></li>
+  <li><a href="#mixed-multi-step-return" id="toc-mixed-multi-step-return" class="nav-link" data-scroll-target="#mixed-multi-step-return">Mixed Multi-step return</a></li>
+  <li><a href="#benefits-of-multi-step-returns" id="toc-benefits-of-multi-step-returns" class="nav-link" data-scroll-target="#benefits-of-multi-step-returns">Benefits of multi-step returns</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>Previously, we talked about using <a href="https://dnlam.github.io/fastblog/2020/06/14/MDP_DP.html">Dynamic Programming</a>, that have access to the full model, to solve optimal Bellman’s Equation using MDPs. Thus, DP can learn directly from the interaction with the environment.</p>
+<p>In this Notebook, we will study model free learning methods that do not require the full model’s knowledge but only experience to attain optimal behaviour.</p>
+</section>
+<section id="monte-carlo-algorithm" class="level1">
+<h1>Monte Carlo Algorithm</h1>
+<p>Monte Carlo (MC) methods are ways of solving the reinforcement learning problem based on averaging sample returns for episodic tasks. Only a completion of an episode, the value estimates and policies will be changed.</p>
+<p>Here, we talked about an episode which is defined as an trajectory of experience having some natural ending points.</p>
+<p>MC is a model free algorithm because it does not require any knowledge of MDP but only interaction returns or samples. As a concrete example, multi-armed bandit can be considered as a MC algorithm because the average reward samples (action values) are estimated for each action.</p>
+<p>In the update form, the iterative true value of an action under multi-armed bandit is calculated as below: <span class="math display">\[
+q_{t+1}(A_t) = q_t(A_t) + \frac{1}{N(t)} (R_{t+1} - q_t(A_t))
+\]</span></p>
+<p>Let’s extend slightly the above bandit problem with different states. In MAB, the episodes are 1 step long as the bandit case before and it means that the actions do not affect the state transitions (you perform an action and you might see a new state that does not depend on your action.). Now, multiple states may appear and do not depend on the actions taken which means there is no long-term consequences. Then the goal is to estimate the action value that is conditioned on the action and state (contextual bandit). <span class="math display">\[
+q(s,a) = \mathbb{E} [R_{t+1} | S_t=s, A_t=a]
+\]</span></p>
+<section id="value-function-approximation" class="level2">
+<h2 class="anchored" data-anchor-id="value-function-approximation">Value Function Approximation</h2>
+<p>So far, we talked about the computation of values in MDP are based on the look up table. But it comes with a problem when a large MDP is introduced when it will consume a huge amount of memory to store every value entry.</p>
+<p>A possible solution for those problem is to use function approximation where the value function and action value function can be parameterized. Then, the parameter will be updated to obtain a value function instead of updating a huge entry during the learning process. <span class="math display">\[
+v_w(s) \approx v_\pi(s) \\\\
+q_w(s,a) \approx a_\pi(s,a) \\\\
+\]</span></p>
+<p>In model free learning, parameter <span class="math inline">\(w\)</span> can be updated as MC Algorithm or Temporal Difference Learning to generalize the unseen states.</p>
+<p>In case of the environment state is not fully observable, we will use agent state <span class="math inline">\(S_t = u_w(S_{t-1},A_{t-1},O_t)\)</span> parameterized by parameters <span class="math inline">\(w\)</span>. Then, the current state is just a function of previous inputs.</p>
+<section id="linear-function-approximation" class="level3">
+<h3 class="anchored" data-anchor-id="linear-function-approximation">Linear Function Approximation</h3>
+<p>We will make a concrete example of a linear function approximation, where linear function can be represented a fixed feature vectors.</p>
+<p><span class="math display">\[
+x(s)=\begin{pmatrix}
+x_1(s) \\
+... \\
+x_m(s) \\
+\end{pmatrix}
+\]</span></p>
+<p>By doing that, we can transfer the states into a bunch of vectors with elements.</p>
+<p>Then, the linear function approximation approach takes these features and defines our value function to be in the inner product.</p>
+<p><span class="math display">\[
+v_w(s) = w^Tx(s) = \sum_{j=1}^n x_j(s)w_j
+\]</span></p>
+<p>To update the our weights <span class="math inline">\(w\)</span>, we need some sorts of objective. In our concern, the predictions will be the case so the objective will be the minimization of the loss between the true value and our estimate. <span class="math display">\[
+L(w) = \mathbb{E} [(v_\pi(S) - w^T x(S))^2]
+\]</span></p>
+<p>By apply Stochastic Gradient Descent for this objective, it will converge to global optimum of this loss function because the loss function is convex.</p>
+<p>Then, the update rule is relatively simple because the gradient of the value function with respect to our parameter <span class="math inline">\(w\)</span> is the feature <span class="math inline">\(x\)</span> and the stochastic gradient update if we would have the true value function <span class="math inline">\(v_\pi\)</span> will be the step size times the error terms of prediction errors and the feature vector. <span class="math display">\[
+\Delta w = \alpha (v_\pi(S_t) - v_w(S_t))x_t
+\]</span></p>
+<p>Basically, the table lookup is a special case of linear value function approximation. Let’s n states be given by <span class="math inline">\(\mathcal{S} = \left\{s_1,...,s_n \right\}\)</span></p>
+<p>One hot feature represents the zeros on almost of the component except on the component that correspond the the state that we care about.</p>
+<p><span class="math display">\[
+x(s)=\begin{pmatrix}
+\mathcal{I}(x_1(s)) \\
+... \\
+\mathcal{I}(x_m(s)) \\
+\end{pmatrix}
+\]</span></p>
+<p>Then, parameter <span class="math inline">\(w\)</span> contains just value estimates for each state.</p>
+<p>$ v(s) = w^Tx(s) = _j w_j x_j(s) = w_s $</p>
+</section>
+</section>
+<section id="model-free-prediction" class="level2">
+<h2 class="anchored" data-anchor-id="model-free-prediction">Model-Free Prediction</h2>
+<p>Basically, q could be a parametric function (neural network) and we could use the following loss <span class="math display">\[
+L(w) = \frac{1}{2} \mathbb{E} [(R_{t+1} - q_w(S_t,A_t))^2]
+\]</span></p>
+<p>The gradient update will be</p>
+<p><span class="math display">\[
+w_{t+1} = w_t - \alpha \triangledown {w_t} L(w_t) \\\\
+= w_t - \alpha \triangledown _{w_t} \frac{1}{2} \mathbb{E} [(R_{t+1} - q_w(S_t,A_t))^2] \\\\
+= w_t + \alpha \mathbb{E} [(R_{t+1} - q_w(S_t,A_t)) \triangledown _{w_t} q_{w_t}(S_t,A_t) ]
+\]</span></p>
+<p>In case of a large continuous state space <span class="math inline">\(\mathcal{S}\)</span> appears, it is just regression.</p>
+<p>If the action value function can be represented as a linear function, e.g.&nbsp;<span class="math inline">\(q(s,a) = w^T x(s,a)\)</span>, then <span class="math display">\[
+w_{t+1} = w_t + \alpha (R_{t+1} - q_w(S_t,A_t)) x(s,a)
+\]</span></p>
+</section>
+<section id="mc-policy-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="mc-policy-evaluation">MC Policy Evaluation</h2>
+<p>Now, let’s consider sequential decision problems where the objective is to learn <span class="math inline">\(v_\pi\)</span> from episodes of experience under policy <span class="math inline">\(\pi\)</span> under discouted factor <span class="math inline">\(\gamma\)</span></p>
+<p><span class="math display">\[
+S_1, A_1, R_2, ..., S_k \sim \pi
+\]</span></p>
+<p>The discounted reward will be: <span class="math display">\[
+G_t = R_{t+1} + ... + \gamma ^{T-t-1} R_T
+\]</span></p>
+<p>The expected return : <span class="math display">\[
+v_\pi(s) = \mathbb{E}[G_t | S_t=s, \pi]
+\]</span> Here, we could use sample average return instead of expected return as the target of our updates and it is called Monte Carlo policy evaluation.</p>
+</section>
+<section id="drawbacks-of-mc-learning" class="level2">
+<h2 class="anchored" data-anchor-id="drawbacks-of-mc-learning">Drawbacks of MC Learning</h2>
+<ul>
+<li>When episodes are long, learning can be quite slow because we need to wait until the end of the episode before start updating (The return is not well defined before we do.) and the return can have high variance.</li>
+</ul>
+</section>
+</section>
+<section id="temporal-difference-learning" class="level1">
+<h1>Temporal Difference Learning</h1>
+<p>Let’s remind about the Bellman’s equation relates the value of a state with the value of the next state and it is the definition of the value of a policy. <span class="math display">\[
+v_\pi(s) = \mathbb{E} [R_{t+1} + \gamma v_\pi(S_{t+1}) | S_t=s, A_t \sim \pi(S_t)]
+\]</span></p>
+<p>Before that, we learned that we can approximate these values by tuning this definition into an update where <span class="math inline">\(v_\pi\)</span> is now replaced with the current estimate <span class="math inline">\(v_k\)</span>. However, we should notice that the update can not happen at time step t because it is not known yet the return at time step t. This iterative algorithm do learn and the do find the true value for the policy. <span class="math display">\[
+v_{k+1}(s) = \mathbb{E} [R_{t+1} + \gamma v_k(S_{t+1}) | S_t=s, A_t \sim \pi(S_t)]
+\]</span></p>
+<p>It suggested that we can sample this so that $v_{t+1}(S_t) = R_{t+1} + v_t(S_{t+1}) $. then, it is better to take a small step with parameter <span class="math inline">\(\alpha\)</span> than do all the way like that, so <span class="math display">\[
+v_{t+1}(S_t) = v_t(S_t) + \alpha _t (R_{t+1} + \gamma v_t(S_{t+1}) - v_t(S_t))
+\]</span></p>
+<p>It is very similar to MC algorithm but instead of updating towards a full return, we are going to update the target <span class="math inline">\(R_{t+1} + \gamma v_t(S_{t+1})\)</span>. So it uses our current value estimates instead of full return. It is called <code>temporal difference</code> learning</p>
+<p>So, in temporal difference learning, the new target unrolls the experience one step and then uses our estimates to replace the rest of the return. The <code>temporal difference error</code>(<span class="math inline">\(\delta _t\)</span>) now is the difference in value from what we currently thing (<span class="math inline">\(v_t(S_t)\)</span>) comparing to the one step into the future (<span class="math inline">\(R_{t+1} + \gamma v_t(S_{t+1})\)</span>)</p>
+<section id="bootstraping-and-sampling" class="level2">
+<h2 class="anchored" data-anchor-id="bootstraping-and-sampling">Bootstraping and Sampling</h2>
+<p>Az we might notice now, Temporal Difference Learning combines the bootstraping approach of Dynamic Programming to derive the current estimate as part of the targer for the update and Sampling which does not require a model.</p>
+<p>Then we can apply the same idea to the action values where we have some action value function q and we do exactly as before.</p>
+<p><span class="math display">\[
+q_{t+1} (S_t,A_t) \leftarrow q_t(S_t,A_t) +  \alpha (R_{t+1} + \gamma q_t(S_{t+1}, A_{t+1}) - q_t(S_t,A_t))
+\]</span></p>
+<p>This algorithm is called <code>SARSA</code> because it uses a state action reward state and action <span class="math inline">\((S_t,A_t,R_{t+1}, S_{t+1},A_{t+1})\)</span></p>
+</section>
+<section id="temporal-difference-learning-properties" class="level2">
+<h2 class="anchored" data-anchor-id="temporal-difference-learning-properties">Temporal Difference Learning Properties</h2>
+<p>There are several properties of TD that we can take notice: - TD is model-free since it does not require the knowledge of MDP and it can learn directly from experience. - TD can learn from incomplete episodes bu bootstraping. It means that we dont have to wait all the way long until the end of episode before we can start learning. - TD can learn durning each episode.</p>
+</section>
+<section id="pros-and-cons-of-mc-and-td" class="level2">
+<h2 class="anchored" data-anchor-id="pros-and-cons-of-mc-and-td">Pros and Cons of MC and TD</h2>
+<ul>
+<li><p>TD can learn before knowing the final outcomes because it can learn online after every step whereas MC must wait until the end of episode before return is known.</p></li>
+<li><p>TD can learn without the final outcome, then TD can learn from incomplete sequences but MC can only learn from complete sequences. Additionally, TD works in continuing environment and MC works for episodic environments.</p></li>
+<li><p>TD nees reasonable value estimates because the update is based on the estimation, so the bad estimate can lead to the low performance.</p></li>
+</ul>
+<section id="biasvariance-trade-off" class="level3">
+<h3 class="anchored" data-anchor-id="biasvariance-trade-off">Bias/Variance trade-off</h3>
+<p>Practically speaking, MC return is an unbiased estimate of the true value but TD target is a biased estimate of the true value. In exchange, TD target has lower variance because the return in MC depends on many random actions, transitions, rewards but Td based merely on one random action, transition and reward.</p>
+</section>
+</section>
+<section id="batch-mode-of-mc-and-td" class="level2">
+<h2 class="anchored" data-anchor-id="batch-mode-of-mc-and-td">Batch mode of MC and TD</h2>
+<p>We have seen so far that tarbular MC and TD converge <span class="math inline">\(v_t \rightarrow v_\pi\)</span> as experience <span class="math inline">\(\rightarrow \infty\)</span> and <span class="math inline">\(\alpha_t \rightarrow 0\)</span>. But let’s see what happen when we only have finite experience by considering fixed batch of experience $$ S_1^1, A_1^1, R_2^1, …, S^1_{T_1} \ . \ . \ . \ S_1^K, A_1^K, R_2^K, …, S^1_{T_K}</p>
+<p>$$</p>
+<p>Here, instead of having a real model with every transitional probabilities, we only have observed frequencies of transitions (emperical model)</p>
+<p>By using MC learning, it will converge to best mean-squared fit for the observed returns $<em>{k=1}^K </em>{t=1} ^{T_k} (G_t^k - v(S_t<sup>k))</sup>2 $ by miniminzing this difference.</p>
+<p>On the other hand, TD converges to solution of max likelihood Markov model, given the data samples.</p>
+<p>Therefore, TD exploits Markov property by means of helping in fully observable enioronments but MC does not.</p>
+</section>
+</section>
+<section id="unified-view-of-reinforcement-learning" class="level1">
+<h1>Unified view of Reinforcement Learning</h1>
+<p>Let’s compare different RL algorithms where Dynamic Programming has been put on the top left corresponding to shallow update where we just look one step and full breadth into the future and we have full access on it (we need a model).</p>
+<p>Besides full breadth, if we can access on the full depth of the model, it would give us exhaustive search.</p>
+<p>If we go all the way down, it exists an algorithm that only look at one trajectory and it is useful when we have only samples or we only deal with the interaction. TD appears on the bottom left and MC is on the bottom right. TD can be thought as having the breadth of one and depth of one so we can just take one step in the world and we can use that to update a value estimate whereas MC makes a very deep update when it rolls until the end of the episode and it use full trajectory to updates its value estimates.</p>
+<p><img src="ghtop_images/uview-rl.png" class="img-fluid"></p>
+<p>Following these principles, TD learning might not be accurate as it uses value estimates and additionally, information can propagate back quite slowly in some cases. MC information propagates faster as ot acknowledge all the state that have been visited before, but it comes with the cost of noisiy updates (high variance).</p>
+<p>to go between MC and TD, we proposed <code>Multi-step update</code></p>
+<section id="multi-step-prediction" class="level3">
+<h3 class="anchored" data-anchor-id="multi-step-prediction">Multi-step prediction</h3>
+<p>Now, instead of looking exactly one step ahead as TD does, we could consider n-step ahead</p>
+<p><img src="ghtop_images/nstep-update.png" class="img-fluid"></p>
+<p>In general, the n-step return is defined as <span class="math display">\[
+G_t^{(n)} = R_{t+1} + \gamma R_{t+2} + ... + \gamma^{n-1} R_{t+n} + \gamma ^n v(S_{t+n})
+\]</span></p>
+<p>Then, the multi step TD learning can be transformed into the update as following: <span class="math display">\[
+v(S_t) \leftarrow v(S_t) + \alpha (G_n^{(n)} - v(S_t))
+\]</span></p>
+</section>
+<section id="mixed-multi-step-return" class="level3">
+<h3 class="anchored" data-anchor-id="mixed-multi-step-return">Mixed Multi-step return</h3>
+<p>Previously, if we have n-step return, we take one step <span class="math inline">\(R_{t+1}\)</span> and then we add <span class="math inline">\(n-1\)</span> one step return $G_t^{(n} = R_{t+1} +G_{t+1}^{n-1} $.</p>
+<p>It means that every step we lose one step until we have only one step left and then one step return will then bootstrap one our state value.</p>
+<p>It means that we fully continue with random samples with trajectory in some steps but on other steps we fully stop and do bootstraping.</p>
+<p>It is not necessarily applying the bootstrap at the end of the trajectory but we can do bootstraping a little bit with a parameter <span class="math inline">\(\lambda\)</span></p>
+<p><span class="math display">\[
+G_t^ \lambda = R_{t+1} + \gamma((1-\lambda)v(S_{t+1}) + \lambda G_{t+1}^\lambda)
+\]</span></p>
+<p>Now, instead of fully continuing or boostraping , we can do bootstraping a little bit that is controlled by <span class="math inline">\(\lambda\)</span>. This is a linear interpolation between our estimated matrix value and the rest of lambda return., Mathematically, it equals to the weighted sum of n-step return . <span class="math display">\[
+G_t^\lambda = \sum _{n=1} ^\infty (1-\lambda) \lambda ^{n-1} G_t ^{(n)}  \\
+\sum _{n=1} ^\infty (1-\lambda) \lambda ^{n-1} = 1
+\]</span></p>
+<p>If <span class="math inline">\(\lambda=0\)</span> the return will be the same as TD case. If <span class="math inline">\(\lambda=1\)</span>, the update will follow MC algorithm.</p>
+</section>
+<section id="benefits-of-multi-step-returns" class="level3">
+<h3 class="anchored" data-anchor-id="benefits-of-multi-step-returns">Benefits of multi-step returns</h3>
+<ul>
+<li>Multi-step return have both benefits of TD and MC</li>
+<li>Bootstraping can have issues with bias</li>
+<li>MC can have issues with variance</li>
+<li>Then immediate values of n and <span class="math inline">\(\lambda\)</span> are good.</li>
+</ul>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

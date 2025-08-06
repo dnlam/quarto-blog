@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.32">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2020-06-14">
+<meta name="description" content="Second in a series on understanding Reinforcement Learning.">
+
+<title>Markov Decision Process and Dynamic Programming – quarto-blog</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-60e9869d79eadd47372ed1fe3ed6e672.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">quarto-blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://twitter.com"> <i class="bi bi-twitter" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Markov Decision Process and Dynamic Programming</h1>
+                  <div>
+        <div class="description">
+          Second in a series on understanding Reinforcement Learning.
+        </div>
+      </div>
+                </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">June 14, 2020</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#preliminaries" id="toc-preliminaries" class="nav-link active" data-scroll-target="#preliminaries">Preliminaries</a></li>
+  <li><a href="#markov-decision-processes-mdp" id="toc-markov-decision-processes-mdp" class="nav-link" data-scroll-target="#markov-decision-processes-mdp">Markov Decision Processes (MDP)</a>
+  <ul class="collapse">
+  <li><a href="#polices-and-value-functions" id="toc-polices-and-value-functions" class="nav-link" data-scroll-target="#polices-and-value-functions">Polices and Value functions</a>
+  <ul class="collapse">
+  <li><a href="#optimal-value-function" id="toc-optimal-value-function" class="nav-link" data-scroll-target="#optimal-value-function">Optimal Value Function</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#dynamic-programming" id="toc-dynamic-programming" class="nav-link" data-scroll-target="#dynamic-programming">Dynamic Programming</a>
+  <ul class="collapse">
+  <li><a href="#policy-evaluation-prediction" id="toc-policy-evaluation-prediction" class="nav-link" data-scroll-target="#policy-evaluation-prediction">Policy evaluation (Prediction)</a></li>
+  <li><a href="#policy-improvement" id="toc-policy-improvement" class="nav-link" data-scroll-target="#policy-improvement">Policy improvement</a></li>
+  <li><a href="#value-iteration" id="toc-value-iteration" class="nav-link" data-scroll-target="#value-iteration">Value Iteration</a></li>
+  <li><a href="#bootstraping-in-dynamic-programming" id="toc-bootstraping-in-dynamic-programming" class="nav-link" data-scroll-target="#bootstraping-in-dynamic-programming">Bootstraping in Dynamic Programming</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="preliminaries" class="level1">
+<h1>Preliminaries</h1>
+<ul>
+<li>Markov property: a process is Markov if the future is independent on the past given the present.</li>
+<li>State transition <span class="math display">\[
+p(s'|s,a)= \sum _r p(s',r|s,a)
+\]</span></li>
+<li>Expected reward <span class="math display">\[
+r(s,a) = \mathbb{E} [R|s,a] = \sum _r r \sum _{s'} p(r,s'|s,a)
+\]</span></li>
+</ul>
+</section>
+<section id="markov-decision-processes-mdp" class="level1">
+<h1>Markov Decision Processes (MDP)</h1>
+<p>MDPs are a classical formulations of sequential decision making, where each action influences not only immediate rewards, but also subsequent situations, or states and through those future rewards. Thus MDPs involve delayed reward and the need to trade-off immediate reward and delay reward.</p>
+<p>In bandit problems, we estimated the value <span class="math inline">\(q_*(a)\)</span> of each action a. In MDP, we estimate the value <span class="math inline">\(q_*(s,a)\)</span> of each action a in each state s, or we estimate the value <span class="math inline">\(v_*(s)\)</span> of each state given optimal action selections. These states dependent quantities are essential to accurately assign credit for long term consequences to individual action selections.</p>
+<p>MDPs are meant to be a straight forward framing of problem of learningfrom interaction to achieve a goal. The learner and decision maker is called the <i>agent. </i> The thing it interacts with, comprising everything outside the agent, is called <i>environment. </i> These interact continually, the agent selecting actions and the environment responding to these actions and presenting new situations to the agent. The environment also gives rise to rewards through choice of actions.</p>
+<p><img src="https://miro.medium.com/max/1838/1*ywOrdJAHgSL5RP-AuxsfJQ.png" class="img-fluid"></p>
+<p>A state s has the Markov property when for states $s’ $ and all reward <span class="math inline">\(r \in \mathbb{R}\)</span> <span class="math display">\[
+p(R_{t+1}=r, S_{t+1}=s' | S_t=s) = p(R_{t+1}=r, S_{t+1}=s' | S_1,...,S_{t-1},S_t=s)
+\]</span></p>
+<p>Then, the distribution of the reward and the next state when we condition only the current state is the same as we would conditional all previous states. So, if we know all the previous states, this give us no additional information about what the next state and reward would be. It means that we just need to look at the current state.</p>
+<p><span class="math inline">\(p(r,s'|s,a)\)</span> is the joint probability of a reward r and next state s’ if we are at the state s and action a has been taken.</p>
+<p>In a finite MDP, the sets of state, actions and rewards ($, , $) all have a finite number of element. The funtion <i>p </i> gives the dynamics of MDPs and <span class="math inline">\(\gamma \in [0,1]\)</span> is a discount factor that trades off later rewards. Then, a MDP is a tuple of <span class="math inline">\((\mathcal{S}, \mathcal{A},\mathcal{R}, p, \gamma)\)</span>.</p>
+<p>Acting in a MDP results in returns <span class="math inline">\(G_t\)</span>: total discounted reward from time-step t. <span class="math display">\[
+G_t = R_{t+1} + \gamma R_{t+2} + ... = \sum _{k=0} ^\infty \gamma^k R_{t+k+1}
+\]</span></p>
+<p>In principle, <span class="math inline">\(G_t\)</span> is a random variables that depends on MDP and policy.</p>
+<section id="polices-and-value-functions" class="level2">
+<h2 class="anchored" data-anchor-id="polices-and-value-functions">Polices and Value functions</h2>
+<p>Almost all reinforcement learning algorithms ilvolve estimating value functions - functions fo states (or of state-action pairs) that estimate how good it is for the agent to be in a given state (or how good it is to perform a given action in a given state). The rewards that the agent can expect to receive in the future depend on what action it will takes. Accordingly, value function are defined with respect to particular ways of acting, called <i>policy. </i></p>
+<p>Formally, policy maps states to probabilities of selecting each possible action. If the agent follows policy <span class="math inline">\(\pi\)</span> at time t, then <span class="math inline">\(\pi(a|s)\)</span> is the probability that <span class="math inline">\(A_t=a\)</span> if <span class="math inline">\(S_t=s.\)</span></p>
+<p>Recalling that the value function of a state s under policy <span class="math inline">\(\pi\)</span>, <span class="math inline">\(v_\pi(s)\)</span> is the expected return when starting in state s and following <span class="math inline">\(\pi\)</span> thereafter. <span class="math display">\[
+v_\pi(s)= \mathbb{E}_\pi [G_t | S_t=s] = \mathbb{E}_\pi [\sum_k \gamma ^k R_{t+k+1} | S_t=s] \\\\
+=\mathbb{E}_\pi [ R_{t+1} + \gamma G_{t+1} | S_t=s, \pi] \\\\
+= \mathbb{E}_\pi [ R_{t+1} + \gamma v_\pi (S_{t+1}) | S_t=s, A_t \sim \pi(S_t)] \\\\
+= \sum _a \pi(a|s) \sum _r \sum _{s'} p(r,s'|s,a)(r+\gamma v_\pi(s'))
+\]</span></p>
+<p>This recursive equation is the <i>Bellman equation </i> for <span class="math inline">\(v_\pi\)</span>. It expresses a relatioship between the value of a state and the values of its successor states. It also staes that the value of the start state must equal the discounted value of the expected next state, plus the reward expected along the way.</p>
+<p>The same principle is applied for state-action value. <span class="math display">\[
+q_\pi(s,a) = \mathbb{E} [G_t | S_t=s, A_t=a,\pi]
+\]</span></p>
+<p>It implies that: <span class="math display">\[
+q_\pi(s,a) = \mathbb{E}_\pi [ R_{t+1} + \gamma G_{t+1} | S_t=s, A_t=a] \\\\
+= \mathbb{E}_\pi [ R_{t+1} + \gamma q_\pi (S_{t+1},A_{t+1}) | S_t=s, A_t=a] \\\\
+= \sum _r \sum _{s'} p(r,s'|s,a)(r+\gamma \sum_{a'}\pi(a'|s')q_\pi(s',a'))
+\]</span></p>
+<p>Then, the relationship between action value and state-action value can be represented:</p>
+<p><span class="math display">\[
+v_\pi(s) = \sum _a \pi(a|s) q_\pi (s,a) = \mathbb{E} [q_\pi (s,a) | S_t=s, \pi]
+\]</span></p>
+<p>The value of a state equal to the weighted sum of state-action values.</p>
+<p>IF we represent the Bellman Equation in the matrix form, we can see that it is a linear equation form that can be solved directly. <span class="math display">\[
+v= r+ \gamma P^\pi v \\\\
+= (I-\gamma P^ \pi)^{-1}r
+\]</span></p>
+<p>So, if we know the transition matrix, discount factor and reward vector, we can just compute the value function as the solution of the Bellman’s Equation. However, it is burdensome to make it in reality if we care about a hugh system with millions of states.</p>
+<p>By using other iterative method such as Dynamic Programming, Monte Carlo Evaluation and Temporal Difference Learning, we can have another method to solve Bellman Equation.</p>
+<section id="optimal-value-function" class="level3">
+<h3 class="anchored" data-anchor-id="optimal-value-function">Optimal Value Function</h3>
+<p>Solving a reinforcement learning task means finding a policy that achieves a lot of rewards over the long run or optimal policy.</p>
+<p>The optimal state value <span class="math inline">\(v_*(s)\)</span> is the maximum value function over all policies <span class="math display">\[
+v_*(s) = \max _ \pi v^\pi(s)
+\]</span></p>
+<p>The optimal action value function <span class="math inline">\(q_*(s,a)\)</span> is the maximum action-value function over all policies.</p>
+<p><span class="math display">\[
+q_*(s,a) = \max _\pi q^\pi(s,a)
+\]</span></p>
+<p>These optimal values give us what the best possible performance that we can get in a problem. MDP can be considered as solved when we can find these values.</p>
+<p>Estimating the value of certain policy either using state value of action value is called Policy evaluation or prediction because we are are making a prediction what about happens when we follow certain policy.</p>
+<p>Estimating their optimal values is called control because it can be used for policy optimization.</p>
+<p>Once we can get <span class="math inline">\(v_*\)</span>, it is relatively easy to determine optimal policy. For each state s, there will be one or more actions at which the maximum is obtained in the Bellman optimality equation. Any policy that assign non probability only to these actions is an optimal policy. It is related to one step search because the action appears best after a one-step search is the optimal actions. The beauty of <span class="math inline">\(v_*\)</span> is that if one uses it to evaluate the short-term consequences of actions, then a greedy policy is actually optimal in the long term sense because <span class="math inline">\(v_*\)</span> already takes into iaccount the rewards of all possible future behaviours.</p>
+<p>Having the <span class="math inline">\(q_*\)</span> make choosing the optimal actions easier because the agent does not have to do one-step ahead search, for any state s, it can simply find any action that maximizes <span class="math inline">\(q_*(s,a)\)</span>. Hence, at the cost of representing a function of state-action pairs, insteads of the state, the optimal action-value function allows optimal action to be selected without having to know everything about possible successor states and their values (environment’s dynamic) .</p>
+<p>There are equivalences between state and action values: <span class="math display">\[
+v_\pi(s) = \sum _a \pi(a|s) q_\pi(s,a)
+\]</span></p>
+<p><span class="math display">\[
+v_*(s) = \max _a q_*(s,a)
+\]</span></p>
+<p>In order to solve the Bellman Optimality Equation, because it is non linear (contain max operator) so we can not use the same matrix solution as for policy evaluation. So we will use iterative methods to deal with that. If we use a model, it is called Dynamic Programming to get into the optimal policy. If it is based on sample, we can use Monte Carlo, Q-learning and SARSA.</p>
+</section>
+</section>
+</section>
+<section id="dynamic-programming" class="level1">
+<h1>Dynamic Programming</h1>
+<p><b> By definition, Dynamic Programming (DP) refers to a collection of algorithms that can be used to compute optimal polices given a perfect model of the environment as a MDP. </b></p>
+<section id="policy-evaluation-prediction" class="level2">
+<h2 class="anchored" data-anchor-id="policy-evaluation-prediction">Policy evaluation (Prediction)</h2>
+<p>It refers to how to compute the state-value function <span class="math inline">\(v_\pi\)</span> for a policy <span class="math inline">\(\pi\)</span>. <span class="math display">\[
+v_\pi(s) = \mathbb{E} [R_{t+1} + \gamma v_ \pi(S_{t+1}) | s, \pi]
+\]</span></p>
+<p>The basic idea is to initialize the first guess to zero for all the possible states and then we are going to iterate this equation, we are going to assign values which is subscripted as k to indicate that it is an estimate at that time. The way we assign is based on the expectation of one-step ahead relying on true model and we are going to boostrap at the value of iteration k at the next state, and we will use that to find new values at k+1.</p>
+<p>Here, the bootstraping means we use the estimate at time k to estimate the value at time k+1.</p>
+<p><span class="math display">\[
+v_{k+1} (s) = \mathbb{E}[R_{t+1} + \gamma v_k(S_{t+1}) | s, \pi]
+\]</span></p>
+<p>Whenever <span class="math inline">\(v_{k+1}(s) = v_k(s)\)</span>, then we must found <span class="math inline">\(v_\pi\)</span>.</p>
+</section>
+<section id="policy-improvement" class="level2">
+<h2 class="anchored" data-anchor-id="policy-improvement">Policy improvement</h2>
+<p>By doing policy evaluation, we can evaluate the state value under the policy <span class="math inline">\(\pi\)</span>. By doing that, we know how good it is to follow the current policy by choosing a particular action. However, we do not know it is better or worst to change to a new policy or not because another policy can have better value function (better policy).</p>
+<p>Let’s consider the action value: <span class="math display">\[
+q_\pi(s,a) = \mathbb{E} [R_{t+1} + \gamma v_\pi(S_{t+1}) | S_t=s, A_t=a] \\\\
+= \sum _{s',r} p(s',r|s,a)[r+\gamma v_\pi(s')]
+\]</span></p>
+<p>By picking the greedy action according to action values, we can examine if it is better to change a policy or not. <span class="math display">\[
+\pi_{new}(s) = \argmax_{a} q_\pi(s,a) \\\\
+= \argmax _a \mathbb{E} [r_{t+1} + \gamma v_\pi(S_{t+1}) | S_t=s, A_t=a]
+\]</span></p>
+<p>The decide of picking a new policy depends on the greedy action value according to policies. In priciple, we can repeat these processes to change the policy to a better one and re-evaluate the value function, perform the policy improvement and so on.</p>
+<p>By doing that, we can continually evaluate value function and improve our policy to a better ones until the value of new policy is the same as the old one, then the new policy should be the optimal one.</p>
+<p><img src="https://miro.medium.com/max/1034/1*ilt4JYda72oe9Eit6KnHwg.png" class="img-fluid"></p>
+<p>These processes are called <i> Policy Iteration </i>. Policy Iteration comprises 2 alternative processes which are policy evaluation and policy improvement.</p>
+</section>
+<section id="value-iteration" class="level2">
+<h2 class="anchored" data-anchor-id="value-iteration">Value Iteration</h2>
+<p>One draw back of the policy iteration is that its policy evaluation requires multiple sweeps through the state set and we do need to compute the state values of the policy we are considering at that time. Basically, it is the inner loop to calculate the value function of current policy itself and we have the outer loop for the policy imprvoment.</p>
+<p>In principle, we can truncate the policy evaluation step into several ways without losing the convergences guarantees of policy iteration. One special case us when policy evaluation is stopped every iteration. This algorithm is called <i>value iteration. </i></p>
+<p>We can turn the Bellman optimality equation into an update. <span class="math display">\[
+v_{k+1}(s) \leftarrow \max _a \mathbb{E} [R_{t+1} + \gamma v_k(S_{t+1}) | S_t=s, A_t=a]
+\]</span></p>
+<p>This is equivalent to policy iteration, with k=1 step of policy evaluation between each two policy improvement steps.</p>
+</section>
+<section id="bootstraping-in-dynamic-programming" class="level2">
+<h2 class="anchored" data-anchor-id="bootstraping-in-dynamic-programming">Bootstraping in Dynamic Programming</h2>
+<p>Dynamic programming improves the estimates of the value at a state using the estimate of the value function at next states, it is sometimes called learning a guess from a guess and it is a core idea in Reinforcement Learning (bootstraping).</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
